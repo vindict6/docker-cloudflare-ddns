@@ -17,9 +17,11 @@ Go to **Settings → Secrets and variables → Actions** in your repository and 
 | Secret | Default | Description |
 |---|---|---|
 | `CF_RECORD_TYPE` | `A` | DNS record type (`A` or `AAAA`) |
-| `CF_PROXIED` | `true` | Whether to proxy through Cloudflare (`true`/`false`). Default fallback if `CF_PROXIED_RECORDS` is empty. |
-| `CF_PROXIED_RECORDS` | `empty` | Explicitly define which records should be proxied (comma-separated). e.g., `vinsix.com,www.vinsix.com`. If used, any record NOT in this list will be DNS-only (`false`). |
+| `CF_PROXIED_RECORDS` | _(empty)_ | Comma-separated list of records to proxy through Cloudflare, e.g. `vinsix.com,www.vinsix.com` |
+| `CF_UNPROXIED_RECORDS` | _(empty)_ | Comma-separated list of records to keep DNS-only, e.g. `cs2.vinsix.com` |
 | `CF_TTL` | `1` | TTL in seconds (`1` = automatic) |
+
+> Records not in either list default to proxied.
 
 ## How It Works
 
