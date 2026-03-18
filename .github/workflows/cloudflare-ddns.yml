@@ -18,12 +18,19 @@ jobs:
         run: docker build -t cloudflare-ddns .
 
       - name: Run Cloudflare DDNS update
+        env:
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CF_ZONE_ID: ${{ secrets.CF_ZONE_ID }}
+          CF_RECORD_TYPE: ${{ secrets.CF_RECORD_TYPE }}
+          CF_PROXIED_RECORDS: ${{ secrets.CF_PROXIED_RECORDS }}
+          CF_UNPROXIED_RECORDS: ${{ secrets.CF_UNPROXIED_RECORDS }}
+          CF_TTL: ${{ secrets.CF_TTL }}
         run: |
           docker run --rm \
-            -e CF_API_TOKEN="${{ secrets.CF_API_TOKEN }}" \
-            -e CF_ZONE_ID="${{ secrets.CF_ZONE_ID }}" \
-            -e CF_RECORD_NAME="${{ secrets.CF_RECORD_NAME }}" \
-            -e CF_RECORD_TYPE="${{ secrets.CF_RECORD_TYPE }}" \
-            -e CF_PROXIED="${{ secrets.CF_PROXIED }}" \
-            -e CF_TTL="${{ secrets.CF_TTL }}" \
+            -e CF_API_TOKEN \
+            -e CF_ZONE_ID \
+            ${CF_RECORD_TYPE:+-e CF_RECORD_TYPE} \
+            ${CF_PROXIED_RECORDS:+-e CF_PROXIED_RECORDS} \
+            ${CF_UNPROXIED_RECORDS:+-e CF_UNPROXIED_RECORDS} \
+            ${CF_TTL:+-e CF_TTL} \
             cloudflare-ddns
