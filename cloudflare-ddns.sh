@@ -28,12 +28,31 @@ CURRENT_IP=$(curl -sf https://api.ipify.org) || {
 }
 echo "Current IP: $CURRENT_IP"
 
+# Check if a record should be proxied
+is_proxied() {
+  local record=$1
+  
+  # If CF_PROXIED_RECORDS is set, only proxy records in that list
+  if [ -n "$CF_PROXIED_RECORDS" ]; then
+    # adding commas to ensuring exact match (e.g. ,www.vinsix.com,)
+    if echo ",$CF_PROXIED_RECORDS," | grep -q ",$record,"; then
+      echo "true"
+    else
+      echo "false"
+    fi
+  else
+    # Fallback to the global CF_PROXIED behavior
+    echo "$CF_PROXIED"
+  fi
+}
+
 # Update or create a single DNS record
 update_record() {
   RECORD_NAME="$1"
+  RECORD_PROXIED_SETTING=$(is_proxied "$RECORD_NAME")
 
   echo ""
-  echo "--- Processing $RECORD_NAME ---"
+  echo "--- Processing $RECORD_NAME (Proxied: $RECORD_PROXIED_SETTING) ---"
   echo "Fetching DNS record for $RECORD_NAME..."
   RECORD_RESPONSE=$(curl -sf \
     -H "Authorization: Bearer $CF_API_TOKEN" \
@@ -53,7 +72,7 @@ update_record() {
     CREATE_RESPONSE=$(curl -sf -X POST \
       -H "Authorization: Bearer $CF_API_TOKEN" \
       -H "Content-Type: application/json" \
-      --data "{\"type\":\"$CF_RECORD_TYPE\",\"name\":\"$RECORD_NAME\",\"content\":\"$CURRENT_IP\",\"ttl\":$CF_TTL,\"proxied\":$CF_PROXIED}" \
+      --data "{\"type\":\"$CF_RECORD_TYPE\",\"name\":\"$RECORD_NAME\",\"content\":\"$CURRENT_IP\",\"ttl\":$CF_TTL,\"proxied\":$RECORD_PROXIED_SETTING}" \
       "$API_BASE/zones/$CF_ZONE_ID/dns_records") || {
       echo "ERROR: Failed to create DNS record for $RECORD_NAME"
       return 1
@@ -67,15 +86,15 @@ update_record() {
       echo "$CREATE_RESPONSE" | jq '.errors'
       return 1
     fi
-  elif [ "$RECORD_IP" = "$CURRENT_IP" ] && [ "$RECORD_PROXIED" = "$CF_PROXIED" ]; then
+  elif [ "$RECORD_IP" = "$CURRENT_IP" ] && [ "$RECORD_PROXIED" = "$RECORD_PROXIED_SETTING" ]; then
     echo "DNS record for $RECORD_NAME is already up to date ($CURRENT_IP, proxied=$RECORD_PROXIED). No changes needed."
   else
     # Update existing record
-    echo "Updating $RECORD_NAME: IP=$RECORD_IP -> $CURRENT_IP, proxied=$RECORD_PROXIED -> $CF_PROXIED"
+    echo "Updating $RECORD_NAME: IP=$RECORD_IP -> $CURRENT_IP, proxied=$RECORD_PROXIED -> $RECORD_PROXIED_SETTING"
     UPDATE_RESPONSE=$(curl -sf -X PUT \
       -H "Authorization: Bearer $CF_API_TOKEN" \
       -H "Content-Type: application/json" \
-      --data "{\"type\":\"$CF_RECORD_TYPE\",\"name\":\"$RECORD_NAME\",\"content\":\"$CURRENT_IP\",\"ttl\":$CF_TTL,\"proxied\":$CF_PROXIED}" \
+      --data "{\"type\":\"$CF_RECORD_TYPE\",\"name\":\"$RECORD_NAME\",\"content\":\"$CURRENT_IP\",\"ttl\":$CF_TTL,\"proxied\":$RECORD_PROXIED_SETTING}" \
       "$API_BASE/zones/$CF_ZONE_ID/dns_records/$RECORD_ID") || {
       echo "ERROR: Failed to update DNS record for $RECORD_NAME"
       return 1
