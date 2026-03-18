@@ -10,7 +10,7 @@ Go to **Settings → Secrets and variables → Actions** in your repository and 
 |---|---|
 | `CF_API_TOKEN` | Cloudflare API token with `Zone.DNS` edit permissions |
 | `CF_ZONE_ID` | Zone ID (found on the domain's Overview page in Cloudflare) |
-| `CF_RECORD_NAME` | Full DNS record name, e.g. `home.example.com` |
+| `CF_RECORD_NAME` | Comma-separated DNS record names, e.g. `example.com,www.example.com` |
 
 ## GitHub Secrets (Optional)
 
@@ -24,8 +24,10 @@ Go to **Settings → Secrets and variables → Actions** in your repository and 
 
 1. The workflow runs on a schedule (every 15 minutes) or via manual dispatch.
 2. It builds a lightweight Alpine Docker image with `curl` and `jq`.
-3. The container fetches the runner's public IP and compares it to the existing DNS record.
-4. If the IP has changed (or no record exists), it creates/updates the record via the Cloudflare API.
+3. The container fetches the runner's public IP and compares it to each existing DNS record.
+4. If the IP has changed (or no record exists), it creates/updates each record via the Cloudflare API.
+
+> **Tip:** To update both the root domain and `www`, set `CF_RECORD_NAME` to `example.com,www.example.com`.
 
 ## Creating a Cloudflare API Token
 
