@@ -2,13 +2,18 @@
 set -e
 
 # Validate required environment variables
-for var in CF_API_TOKEN CF_ZONE_ID CF_RECORD_NAME; do
+for var in CF_API_TOKEN CF_ZONE_ID; do
   eval val=\$$var
   if [ -z "$val" ]; then
     echo "ERROR: $var is not set"
     exit 1
   fi
 done
+
+if [ -z "$CF_PROXIED_RECORDS" ] && [ -z "$CF_UNPROXIED_RECORDS" ]; then
+  echo "ERROR: At least one of CF_PROXIED_RECORDS or CF_UNPROXIED_RECORDS must be set"
+  exit 1
+fi
 
 CF_RECORD_TYPE="${CF_RECORD_TYPE:-A}"
 CF_TTL="${CF_TTL:-1}"
@@ -23,34 +28,10 @@ CURRENT_IP=$(curl -sf https://api.ipify.org) || {
 }
 echo "Current IP: $CURRENT_IP"
 
-# Check if a record should be proxied
-is_proxied() {
-  local record=$1
-
-  # Check if explicitly listed as unproxied
-  if [ -n "$CF_UNPROXIED_RECORDS" ]; then
-    if echo ",$CF_UNPROXIED_RECORDS," | grep -q ",$record,"; then
-      echo "false"
-      return
-    fi
-  fi
-
-  # Check if explicitly listed as proxied
-  if [ -n "$CF_PROXIED_RECORDS" ]; then
-    if echo ",$CF_PROXIED_RECORDS," | grep -q ",$record,"; then
-      echo "true"
-      return
-    fi
-  fi
-
-  # Default to proxied if not in either list
-  echo "true"
-}
-
 # Update or create a single DNS record
 update_record() {
   RECORD_NAME="$1"
-  RECORD_PROXIED_SETTING=$(is_proxied "$RECORD_NAME")
+  RECORD_PROXIED_SETTING="$2"
 
   echo ""
   echo "--- Processing $RECORD_NAME (Proxied: $RECORD_PROXIED_SETTING) ---"
@@ -112,14 +93,24 @@ update_record() {
   fi
 }
 
-# Process each comma-separated record name
+# Process proxied records
 FAILED=0
-IFS=','
-for name in $CF_RECORD_NAME; do
-  # Trim whitespace
-  name=$(echo "$name" | xargs)
-  update_record "$name" || FAILED=1
-done
+if [ -n "$CF_PROXIED_RECORDS" ]; then
+  IFS=','
+  for name in $CF_PROXIED_RECORDS; do
+    name=$(echo "$name" | xargs)
+    update_record "$name" "true" || FAILED=1
+  done
+fi
+
+# Process unproxied records
+if [ -n "$CF_UNPROXIED_RECORDS" ]; then
+  IFS=','
+  for name in $CF_UNPROXIED_RECORDS; do
+    name=$(echo "$name" | xargs)
+    update_record "$name" "false" || FAILED=1
+  done
+fi
 
 if [ "$FAILED" -ne 0 ]; then
   echo ""
