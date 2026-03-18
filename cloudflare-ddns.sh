@@ -13,11 +13,6 @@ done
 CF_RECORD_TYPE="${CF_RECORD_TYPE:-A}"
 CF_TTL="${CF_TTL:-1}"
 
-# Default to proxied if not explicitly set or empty
-if [ -z "$CF_PROXIED" ]; then
-  CF_PROXIED="true"
-fi
-
 API_BASE="https://api.cloudflare.com/client/v4"
 
 # Get current public IP
@@ -31,19 +26,25 @@ echo "Current IP: $CURRENT_IP"
 # Check if a record should be proxied
 is_proxied() {
   local record=$1
-  
-  # If CF_PROXIED_RECORDS is set, only proxy records in that list
+
+  # Check if explicitly listed as unproxied
+  if [ -n "$CF_UNPROXIED_RECORDS" ]; then
+    if echo ",$CF_UNPROXIED_RECORDS," | grep -q ",$record,"; then
+      echo "false"
+      return
+    fi
+  fi
+
+  # Check if explicitly listed as proxied
   if [ -n "$CF_PROXIED_RECORDS" ]; then
-    # adding commas to ensuring exact match (e.g. ,www.vinsix.com,)
     if echo ",$CF_PROXIED_RECORDS," | grep -q ",$record,"; then
       echo "true"
-    else
-      echo "false"
+      return
     fi
-  else
-    # Fallback to the global CF_PROXIED behavior
-    echo "$CF_PROXIED"
   fi
+
+  # Default to proxied if not in either list
+  echo "true"
 }
 
 # Update or create a single DNS record
