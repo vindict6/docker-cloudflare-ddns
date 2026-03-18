@@ -11,8 +11,12 @@ for var in CF_API_TOKEN CF_ZONE_ID CF_RECORD_NAME; do
 done
 
 CF_RECORD_TYPE="${CF_RECORD_TYPE:-A}"
-CF_PROXIED="${CF_PROXIED:-true}"
 CF_TTL="${CF_TTL:-1}"
+
+# Default to proxied if not explicitly set or empty
+if [ -z "$CF_PROXIED" ]; then
+  CF_PROXIED="true"
+fi
 
 API_BASE="https://api.cloudflare.com/client/v4"
 
@@ -41,6 +45,7 @@ update_record() {
 
   RECORD_ID=$(echo "$RECORD_RESPONSE" | jq -r '.result[0].id // empty')
   RECORD_IP=$(echo "$RECORD_RESPONSE" | jq -r '.result[0].content // empty')
+  RECORD_PROXIED=$(echo "$RECORD_RESPONSE" | jq -r '.result[0].proxied // empty')
 
   if [ -z "$RECORD_ID" ]; then
     # Create new record
@@ -62,11 +67,11 @@ update_record() {
       echo "$CREATE_RESPONSE" | jq '.errors'
       return 1
     fi
-  elif [ "$RECORD_IP" = "$CURRENT_IP" ]; then
-    echo "DNS record for $RECORD_NAME is already up to date ($CURRENT_IP). No changes needed."
+  elif [ "$RECORD_IP" = "$CURRENT_IP" ] && [ "$RECORD_PROXIED" = "$CF_PROXIED" ]; then
+    echo "DNS record for $RECORD_NAME is already up to date ($CURRENT_IP, proxied=$RECORD_PROXIED). No changes needed."
   else
     # Update existing record
-    echo "Updating $RECORD_NAME: $RECORD_IP -> $CURRENT_IP"
+    echo "Updating $RECORD_NAME: IP=$RECORD_IP -> $CURRENT_IP, proxied=$RECORD_PROXIED -> $CF_PROXIED"
     UPDATE_RESPONSE=$(curl -sf -X PUT \
       -H "Authorization: Bearer $CF_API_TOKEN" \
       -H "Content-Type: application/json" \
