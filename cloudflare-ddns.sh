@@ -11,7 +11,7 @@ for var in CF_API_TOKEN CF_ZONE_ID CF_RECORD_NAME; do
 done
 
 CF_RECORD_TYPE="${CF_RECORD_TYPE:-A}"
-CF_PROXIED="${CF_PROXIED:-false}"
+CF_PROXIED="${CF_PROXIED:-true}"
 CF_TTL="${CF_TTL:-1}"
 
 API_BASE="https://api.cloudflare.com/client/v4"
