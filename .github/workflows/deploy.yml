@@ -1,0 +1,30 @@
+name: Cloudflare DDNS Deploy
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t cloudflare-ddns .
+
+      - name: Deploy Cloudflare DDNS container
+        run: |
+          docker stop cloudflare-ddns || true
+          docker rm cloudflare-ddns || true
+          docker run -d \
+            --name cloudflare-ddns \
+            --restart unless-stopped \
+            -e CF_API_TOKEN="${{ secrets.CF_API_TOKEN }}" \
+            -e CF_ZONE_ID="${{ secrets.CF_ZONE_ID }}" \
+            cloudflare-ddns
