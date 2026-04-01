@@ -10,7 +10,7 @@ for var in CF_API_TOKEN CF_ZONE_ID; do
   fi
 done
 
-CONFIG_FILE="${CONFIG_FILE:-/config.json}"
+export CONFIG_FILE="${CONFIG_FILE:-/config.json}"
 
 if [ ! -f "$CONFIG_FILE" ]; then
   echo "ERROR: Configuration file not found at $CONFIG_FILE"
